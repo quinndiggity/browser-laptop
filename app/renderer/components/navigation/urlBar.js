@@ -213,19 +213,7 @@ class UrlBar extends React.Component {
   }
 
   onBlur (e) {
-    // We intentionally do not setUrlBarFocused(false) here because
-    // that state is for managing when it should be set if it is active.
-    windowActions.setNavBarUserInput(e.target.value)
-
-    if (!eventElHasAncestorWithClasses(e, ['urlBarSuggestions', 'urlbarForm'])) {
-      this.updateLocationToSuggestion()
-    }
-  }
-
-  updateLocationToSuggestion () {
-    if (this.props.locationValueSuffix.length > 0) {
-      windowActions.setNavBarUserInput(this.props.locationValue + this.props.locationValueSuffix)
-    }
+    windowActions.urlBarOnBlur(getCurrentWindowId(), e.target.value, this.props.locationValue, eventElHasAncestorWithClasses(e, ['urlBarSuggestions', 'urlbarForm']))
   }
 
   get suggestionLocation () {
@@ -305,8 +293,7 @@ class UrlBar extends React.Component {
 
   onFocus (e) {
     this.select()
-    windowActions.setUrlBarFocused(true)
-    windowActions.setUrlBarSelected(true)
+    windowActions.urlBarOnFocus(getCurrentWindowId())
   }
 
   componentWillMount () {
@@ -316,9 +303,8 @@ class UrlBar extends React.Component {
       this.focus()
       this.select()
       windowActions.setRenderUrlBarSuggestions(false)
-      windowActions.setUrlBarFocused(true)
-      windowActions.setUrlBarSelected(true)
       windowActions.setUrlBarActive(true)
+      windowActions.urlBarOnFocus(getCurrentWindowId())
     })
   }
 
@@ -395,14 +381,6 @@ class UrlBar extends React.Component {
     return ['about:', 'file:', 'chrome:', 'view-source:'].includes(protocol)
   }
 
-  get isHTTPPage () {
-    // Whether this page is HTTP or HTTPS. We don't show security indicators
-    // for other protocols like mailto: and about:.
-    const protocol = urlParse(
-      UrlUtil.getLocationIfPDF(this.props.location)).protocol
-    return protocol === 'http:' || protocol === 'https:'
-  }
-
   get shouldRenderUrlBarSuggestions () {
     return this.props.shouldRender === true &&
       this.props.suggestionList && this.props.suggestionList.size > 0
@@ -431,7 +409,7 @@ class UrlBar extends React.Component {
     const history = (activeFrame.get('history') || new Immutable.List())
     const canGoForward = activeTabId === tabState.TAB_ID_NONE ? false : tabState.canGoForward(state, activeTabId)
     const urlbarLocation = urlbar.get('location')
-    const locationValue = (isIntermediateAboutPage(urlbarLocation) && history.size() > 0 && !canGoForward)
+    const locationValue = (isIntermediateAboutPage(urlbarLocation) && history.size > 0 && !canGoForward)
         ? history.last() : UrlUtil.getDisplayLocation(urlbarLocation, getSetting(settings.PDFJS_ENABLED))
     const selectedIndex = activeFrame.getIn(['navbar', 'urlbar', 'suggestions', 'selectedIndex'])
 
@@ -454,6 +432,12 @@ class UrlBar extends React.Component {
       searchShortcut = new RegExp('^' + provider.get('shortcut') + ' ', 'g')
       searchURL = provider.get('search')
     }
+
+    // Whether this page is HTTP or HTTPS. We don't show security indicators
+    // for other protocols like mailto: and about:.
+    const protocol = urlParse(
+      UrlUtil.getLocationIfPDF(location)).protocol
+    const isHTTPPage = protocol === 'http:' || protocol === 'https:'
 
     const props = {}
 
@@ -484,6 +468,7 @@ class UrlBar extends React.Component {
     props.isActive = urlbar.get('active')
     props.isSelected = urlbar.get('selected')
     props.isFocused = urlbar.get('focused')
+    props.isHTTPPage = isHTTPPage
     props.activateSearchEngine = activateSearchEngine
     props.searchSelectEntry = urlbarSearchDetail
     props.autocompleteEnabled = urlbar.getIn(['suggestions', 'autocompleteEnabled'])
@@ -507,7 +492,7 @@ class UrlBar extends React.Component {
           activateSearchEngine={this.props.activateSearchEngine}
           active={this.props.isActive}
           isSecure={this.props.isSecure}
-          isHTTPPage={this.isHTTPPage}
+          isHTTPPage={this.props.isHTTPPage}
           loading={this.props.loading}
           location={this.props.location}
           searchSelectEntry={this.props.searchSelectEntry}
