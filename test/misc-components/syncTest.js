@@ -58,7 +58,6 @@ function * toggleSync (client, expectedState) {
     throw new Error('expectedState is required')
   }
   yield client
-    .waitForTabCount(1)
     .tabByIndex(0)
     .loadUrl(prefsUrl)
     .waitForVisible(syncTab)
