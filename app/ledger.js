@@ -2094,7 +2094,7 @@ var networkConnected = underscore.debounce(() => {
  */
 
 var muonWriter = (path, payload) => {
-  muon.file.writeImportant(path, JSON.stringify(payload), (success) => {
+  muon.file.writeImportant(path, JSON.stringify(payload, null, 2), (success) => {
     if (!success) return console.log('write error: ' + path)
 
     if ((quitP) && (!getSetting(settings.PAYMENTS_ENABLED)) && (getSetting(settings.SHUTDOWN_CLEAR_HISTORY))) {
