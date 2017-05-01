@@ -723,7 +723,7 @@ var initialize = (paymentsEnabled) => {
               }
               getStateInfo(stateResult)
 
-              atomicWriter(pathName(statePath), stateResult, { flushP: true }, () => {})
+              muonWriter(pathName(statePath), stateResult)
             })
           }
         } catch (ex) {
@@ -980,7 +980,7 @@ const fetchFavIcon = (entry, url, redirects) => {
 var updatePublisherInfo = (changedPublisher) => {
   var data
 
-  atomicWriter(pathName(synopsisPath), synopsis, () => {})
+  muonWriter(pathName(synopsisPath), synopsis)
   if (!publisherInfo._internal.enabled) return
 
   publisherInfo.synopsis = synopsisNormalizer(changedPublisher)
@@ -1672,7 +1672,7 @@ var callback = (err, result, delayTime) => {
     })
   }
 
-  atomicWriter(pathName(statePath), result, { flushP: true }, () => {})
+  muonWriter(pathName(statePath), result)
   run(delayTime)
 }
 
@@ -1813,7 +1813,7 @@ var run = (delayTime) => {
       result = client.vote(winner)
       if (result) state = result
     })
-    if (state) atomicWriter(pathName(statePath), state, { flushP: true }, () => {})
+    if (state) muonWriter(pathName(statePath), state)
   } catch (ex) {
     console.log('ledger client error(2): ' + ex.toString() + (ex.stack ? ('\n' + ex.stack) : ''))
   }
@@ -2045,7 +2045,7 @@ var setPaymentInfo = (amount) => {
   client.setBraveryProperties(bravery, (err, result) => {
     if (err) return console.log('ledger setBraveryProperties: ' + err.toString())
 
-    if (result) atomicWriter(pathName(statePath), result, { flushP: true }, () => {})
+    if (result) muonWriter(pathName(statePath), result)
   })
   if (ledgerInfo.created) getPaymentInfo()
 }
@@ -2092,6 +2092,19 @@ var networkConnected = underscore.debounce(() => {
 /*
  * low-level utilities
  */
+
+var muonWriter = (path, payload) => {
+  muon.file.writeImportant(path, JSON.stringify(payload), (success) => {
+    if (!success) return console.log('write error: ' + path)
+
+    if ((quitP) && (!getSetting(settings.PAYMENTS_ENABLED)) && (getSetting(settings.SHUTDOWN_CLEAR_HISTORY))) {
+      if (ledgerInfo._internal.debugP) console.log('\ndeleting ' + path)
+      return fs.unlink(path, (err) => { if (err) console.log('unlink error: ' + err.toString()) })
+    }
+
+    if (ledgerInfo._internal.debugP) console.log('\nrenaming ' + path)
+  })
+}
 
 var syncingP = {}
 
